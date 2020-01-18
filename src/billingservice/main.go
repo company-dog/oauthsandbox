@@ -69,6 +69,7 @@ func services(w http.ResponseWriter, r *http.Request) {
 		makeErrorMessage(w, "Cannot parse token claim")
 		return
 	}
+
 	tokenClaim := &model.TokenClaim{}
 	err = json.Unmarshal(claimBytes, tokenClaim)
 	if err != nil {
@@ -92,6 +93,7 @@ func services(w http.ResponseWriter, r *http.Request) {
 	}
 	encoder := json.NewEncoder(w)
 	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
 	encoder.Encode(s)
 }
 
@@ -184,6 +186,7 @@ func makeErrorMessage(w http.ResponseWriter, errMsg string) {
 	s := &BillingError{Error: errMsg} //error message
 	encoder := json.NewEncoder(w)
 	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusBadRequest)
 	encoder.Encode(s)
 
