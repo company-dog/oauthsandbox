@@ -13,17 +13,11 @@ type ResourceAccess struct {
 }
 
 type TokenClaim struct {
-	Jti string `json:"jti"`
-	Exp int    `json:"exp"`
-	Nbf int    `json:"nbf"`
-	Iat int    `json:"iat"`
-	Iss string `json:"iss"`
-	// "aud": "evil-service"
-
-	// "aud": [
-	//	"billingServiceV2",
-	//  "billingService"
-	// ],
+	Jti               string         `json:"jti"`
+	Exp               int            `json:"exp"`
+	Nbf               int            `json:"nbf"`
+	Iat               int            `json:"iat"`
+	Iss               string         `json:"iss"`
 	Aud               interface{}    `json:"aud"`
 	Sub               string         `json:"sub"`
 	Typ               string         `json:"typ"`
@@ -41,26 +35,4 @@ type TokenClaim struct {
 	GivenName         string         `json:"given_name"`
 	FamilyName        string         `json:"family_name"`
 	Email             string         `json:"email"`
-}
-
-// AudAsSlice return all audiences as slice  of string
-func (t *TokenClaim) AudAsSlice() []string {
-	switch t.Aud.(type) {
-	case string:
-		return []string{t.Aud.(string)}
-	case []interface{}:
-		auds, ok := t.Aud.([]interface{})
-		if !ok {
-			return []string{}
-		}
-		result := []string{}
-		for _, aud := range auds {
-			if sAud, ok := aud.(string); ok {
-				result = append(result, sAud)
-			}
-		}
-		return result
-	default:
-		return []string{}
-	}
 }

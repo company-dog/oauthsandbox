@@ -104,6 +104,8 @@ func login(w http.ResponseWriter, r *http.Request) {
 	qs.Add("client_id", config.appID)
 	qs.Add("response_type", "code")
 	qs.Add("redirect_uri", config.authCodeCallback)
+	// qs.Add("scope", "evil-service")
+	qs.Add("scope", "billingService")
 
 	req.URL.RawQuery = qs.Encode()
 	http.Redirect(w, r, req.URL.String(), http.StatusFound)

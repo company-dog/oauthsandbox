@@ -2,13 +2,9 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/json"
-	"fmt"
 	"log"
 	"strings"
 	"testing"
-
-	"learn.oauth.billing/model"
 )
 
 func TestCliaimDecoder(t *testing.T) {
@@ -21,22 +17,4 @@ func TestCliaimDecoder(t *testing.T) {
 		t.Error(err)
 	}
 	log.Println("Claim : ", string(claim))
-}
-
-func TestAudString(t *testing.T) {
-	fmt.Println()
-	token := `{}
-	"aud": "billingServiceV2"
-	}
-	 `
-	claim := &model.TokenClaim{}
-	json.Unmarshal([]byte(token), claim)
-	if len(claim.AudAsSlice()) != 1 {
-		t.Errorf("Expected 1 element, got %v: ", len(claim.AudAsSlice()))
-	}
-	if claim.AudAsSlice()[0] != "billingServiceV2" {
-		t.Errorf("Expected billingServiceV2 got %v ", claim.AudAsSlice()[0])
-	}
-
-	// log.Println("Claim : ", string(claim))
 }
